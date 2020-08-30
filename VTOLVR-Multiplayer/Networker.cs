@@ -470,16 +470,8 @@ public class Networker : MonoBehaviour
         return (true);
     }
 
-
-    private void ReadP2PPacket(byte[] array, uint num, uint num2, CSteamID csteamID)
+    private void ReadSinglePacket(Packet packet, CSteamID csteamID)
     {
-        if (csteamID == null)
-        {
-            Debug.LogError("Csteam ID is null in read p2p, how is this even possible.");
-            throw new CSteamIDNotFoundException();
-        }
-        MemoryStream serializationStream = new MemoryStream(array);
-        Packet packet = new BinaryFormatter().Deserialize(serializationStream) as Packet;
         if (packet.packetType == PacketType.Single)
         {
             PacketSingle packetS = packet as PacketSingle;
@@ -1001,6 +993,32 @@ public class Networker : MonoBehaviour
                 }
             }
         }
+    }
+    private void ReadP2PPacket(byte[] array, uint num, uint num2, CSteamID csteamID)
+    {
+        if (csteamID == null)
+        {
+            Debug.LogError("Csteam ID is null in read p2p, how is this even possible.");
+            throw new CSteamIDNotFoundException();
+        }
+        MemoryStream serializationStream = new MemoryStream(array);
+
+        Packet packet = new BinaryFormatter().Deserialize(serializationStream) as Packet;
+        if (packet.packetType == PacketType.Multiple)
+        {
+            PacketMultiple packetM = packet as PacketMultiple;
+
+            foreach (Packet packSingle in packetM.packets)
+            {
+                ReadSinglePacket(packSingle, csteamID);
+            }
+        }
+        else
+        {
+            ReadSinglePacket(packet, csteamID);
+        }
+
+        
     }
 
 

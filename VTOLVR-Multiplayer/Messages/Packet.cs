@@ -27,11 +27,11 @@ using System;
     [Serializable]
     public class PacketMultiple : Packet
     {
-        public Message[] messages;
+        public Packet[] packets;
 
-        public PacketMultiple(Message[] messages, EP2PSend sendType)
+        public PacketMultiple(Packet[] packetS, EP2PSend sendType)
         {
-            this.messages = messages;
+            this.packets = packetS;
             this.sendType = sendType;
             packetType = PacketType.Multiple;
         }

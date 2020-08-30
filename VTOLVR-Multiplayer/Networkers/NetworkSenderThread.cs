@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using Steamworks;
+using Harmony;
 
 class NetworkSenderThread
 {
@@ -161,8 +162,40 @@ class NetworkSenderThread
                 }
                 internalPlayerList.Clear();
             }
+             
+            List<Packet> packetBuffer = new List<Packet>();
 
-            while (messageQueue.TryDequeue(out OutgoingNetworkPacketContainer outgoingData)) {
+            ConcurrentQueue<OutgoingNetworkPacketContainer> finalmessageQueue = new ConcurrentQueue<OutgoingNetworkPacketContainer>();
+            while (messageQueue.TryDequeue(out OutgoingNetworkPacketContainer outgoingData))
+            {
+                if (outgoingData.Message == null)
+                {
+                    continue;
+                }
+
+                if(outgoingData.PacketType == EP2PSend.k_EP2PSendUnreliable)
+                if (outgoingData.ToWhichReceivers() == OutgoingNetworkPacketContainer.OutgoingReceivers.HostToAllClients)
+                {
+                    packetBuffer.Add(outgoingData.Message);
+                    if(packetBuffer.Count>5)
+                    {
+                        PacketMultiple finalBatch = new PacketMultiple(packetBuffer.ToArray(), EP2PSend.k_EP2PSendUnreliable);
+                         
+                        packetBuffer.Clear();
+                        OutgoingNetworkPacketContainer newContainer = new OutgoingNetworkPacketContainer(finalBatch, EP2PSend.k_EP2PSendUnreliable);
+                            finalmessageQueue.Enqueue(newContainer);
+                    }
+                }
+                else
+                    {
+                        finalmessageQueue.Enqueue(outgoingData);
+                    }
+
+            }
+
+
+
+            while (finalmessageQueue.TryDequeue(out OutgoingNetworkPacketContainer outgoingData)) {
                 // Null checks first
                 if (outgoingData.Message == null) {
                     // Skip this one
